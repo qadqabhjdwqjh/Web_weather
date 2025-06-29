@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tin Thời Tiết & Thiên Văn (GNews API)</title>
+  <style>
+    body {
+      background: #121212;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .news-container {
+      max-width: 900px;
+      margin: auto;
+    }
+    .news-item {
+      display: flex;
+      justify-content: space-between;
+      background-color: #1e1e1e;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .news-item:hover {
+      background-color: #2a2a2a;
+    }
+    .news-content {
+      flex: 1;
+    }
+    .news-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #4dc1ff;
+    }
+    .news-time {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+    }
+    .news-img {
+      width: 100px;
+      height: 70px;
+      object-fit: cover;
+      margin-left: 15px;
+      border-radius: 5px;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      margin-top: 30px;
+      border-radius: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Tin thời tiết & thiên văn (nguồn: GNews.io)</h1>
+  <div class="news-container" id="news"></div>
+  <iframe id="newsFrame"></iframe>
+
+  <script>
+    const apiUrl = "https://gnews.io/api/v4/search?q=weather%20OR%20astronomy&lang=en&max=8&token=94e54e4ef52ec9586cef002aaee4dedf";
+
+    function formatTime(isoString) {
+      const date = new Date(isoString);
+      const now = new Date();
+      const diff = Math.round((now - date) / 3600000);
+      if (diff < 1) return "Vừa xong";
+      if (diff < 24) return `${diff} giờ trước`;
+      return `${Math.floor(diff / 24)} ngày trước`;
+    }
+
+    async function translateText(text) {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(text)}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        return data[0][0][0];
+      } catch (e) {
+        return text;
+      }
+    }
+
+    async function loadNews() {
+      const container = document.getElementById("news");
+      container.innerHTML = "<p>Đang tải...</p>";
+
+      try {
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+        container.innerHTML = "";
+
+        if (!data.articles || data.articles.length === 0) {
+          container.innerHTML = "<p>Không có tin mới.</p>";
+          return;
+        }
+
+        for (const article of data.articles) {
+          const titleVi = await translateText(article.title);
+          const div = document.createElement("div");
+          div.className = "news-item";
+          div.onclick = () => showInIframe(article.url);
+          div.innerHTML = `
+            <div class="news-content">
+              <div class="news-title">${titleVi}</div>
+              <div class="news-time">${formatTime(article.publishedAt)}</div>
+            </div>
+            ${article.image ? `<img src="${article.image}" class="news-img">` : ""}
+          `;
+          container.appendChild(div);
+        }
+      } catch (err) {
+        container.innerHTML = "<p>Lỗi khi tải tin tức.</p>";
+        console.error(err);
+      }
+    }
+
+    function showInIframe(url) {
+      const iframe = document.getElementById("newsFrame");
+      iframe.src = url;
+      iframe.style.display = "block";
+      iframe.scrollIntoView({ behavior: "smooth" });
+    }
+
+    loadNews();
+    setInterval(loadNews, 300000); // 5 phút
+  </script>
+
+</body>
+</html>

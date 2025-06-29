@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dự Báo Thời Tiết - Trang Chủ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background: linear-gradient(135deg, #6b7280, #1e3a8a);
+            min-height: 100vh;
+            margin: 0;
+            color: white;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .nav-menu a,
+        .nav-menu span {
+            color: white;
+            font-weight: 600;
+            transition: color 0.3s ease;
+            cursor: pointer;
+        }
+        .nav-menu a:hover,
+        .nav-menu span:hover {
+            color: #93c5fd;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 20;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .modal-content input {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 5px;
+            padding: 0.75rem;
+            color: white;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        .modal-content button {
+            background: #3b82f6;
+            border: none;
+            border-radius: 5px;
+            padding: 0.75rem;
+            color: white;
+            width: 100%;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .modal-content button:hover {
+            background: #2563eb;
+        }
+        #hourly-weather {
+            display: flex;
+            overflow-x: auto;
+            gap: 1rem;
+            padding: 1rem;
+            max-width: 100%;
+            scrollbar-width: thin;
+            scrollbar-color: #93c5fd transparent;
+        }
+        #hourly-weather::-webkit-scrollbar {
+            height: 8px;
+        }
+        #hourly-weather::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #hourly-weather::-webkit-scrollbar-thumb {
+            background-color: #93c5fd;
+            border-radius: 4px;
+        }
+        .scroll-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            padding: 0.5rem;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .scroll-left { left: 1rem; }
+        .scroll-right { right: 1rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">DỰ BÁO THỜI TIẾT</h1>
+            <div class="nav-menu">
+                <a href="weathercity.html">Thời Tiết Hiện Tại</a>
+                <a href="CO2.html">Tại khu vực</a>
+                <a href="Map.html">Bản Đồ Thời Tiết</a>
+                <a href="#history">Lịch Sử Tìm Kiếm</a>
+                <a id="loginLink" onclick="openModal('loginModal')">Đăng Nhập</a>
+                <a id="registerLink" onclick="openModal('registerModal')">Đăng Ký</a>
+                <span id="userInfo" class="hidden"></span>
+                <a id="logoutLink" class="hidden" onclick="logout()">Đăng Xuất</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- PHẦN HIỂN THỊ CHẤT LƯỢNG KHÔNG KHÍ -->
+    <section class="px-6 py-8 text-left">
+        <h2 class="text-3xl font-semibold mb-4 text-white">📍 Chất lượng không khí theo khu vực</h2>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4">
+            <input id="cityInput" type="text" placeholder="Nhập tên khu vực, ví dụ: Hà Nội" class="p-4 text-lg rounded text-black w-full sm:w-2/3 mb-4 sm:mb-0">
+            <button onclick="searchCity(event)" class="text-lg px-8 py-3 bg-blue-600 text-white rounded hover:bg-blue-700">🔍 Tìm</button>
+        </div>
+        <div id="air-quality" class="text-left mt-4 text-base text-white">
+            Đang tải dữ liệu...
+        </div>
+    </section>
+
+    <!-- PHẦN DỰ BÁO THỜI TIẾT THEO GIỜ -->
+    <section class="px-6 py-8 text-center relative">
+        <h2 class="text-3xl font-semibold mb-4 text-white">⏰ Dự báo thời tiết theo giờ</h2>
+        <div id="hourly-weather"></div>
+        <button class="scroll-btn scroll-left" onclick="scrollWeather(-1)">&#10094;</button>
+        <button class="scroll-btn scroll-right" onclick="scrollWeather(1)">&#10095;</button>
+    </section>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-semibold text-center mb-4">Đăng Nhập</h2>
+            <input type="email" id="loginEmail" placeholder="Email" required>
+            <input type="password" id="loginPassword" placeholder="Mật khẩu" required>
+            <button onclick="login(event)">Đăng Nhập</button>
+            <p class="text-center mt-4">
+                Chưa có tài khoản? <span class="underline cursor-pointer" onclick="switchModal('registerModal')">Đăng ký</span>
+            </p>
+        </div>
+    </div>
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-semibold text-center mb-4">Đăng Ký</h2>
+            <input type="email" id="registerEmail" placeholder="Email" required>
+            <input type="password" id="registerPassword" placeholder="Mật khẩu" required>
+            <button onclick="register(event)">Đăng Ký</button>
+            <p class="text-center mt-4">
+                Đã có tài khoản? <span class="underline cursor-pointer" onclick="switchModal('loginModal')">Đăng nhập</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = "57d97ca9ff9d860bf41660ffe0c23aec"; // Thay bằng API key của bạn cho chất lượng không khí
+        const weatherAPIKey = "xOPtnipmVta8ckcre2pGAbqEOEBLgOVq"; // API key cho dự báo thời tiết
+        let users = JSON.parse(localStorage.getItem("users")) || {};
+
+          // Tìm kiếm khu vực
+        async function searchCity(event) {
+            event.preventDefault();
+            const city = document.getElementById("cityInput").value.trim();
+            if (!city) return alert("Vui lòng nhập tên khu vực.");
+
+            try {
+                const geoRes = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${apiKey}`);
+                const geoData = await geoRes.json();
+                if (!geoData[0]) {
+                    document.getElementById("air-quality").innerHTML = "❌ Không tìm thấy vị trí.";
+                    return;
+                }
+                const { lat, lon } = geoData[0];
+                fetchAirQuality(lat, lon);
+            } catch (error) {
+                document.getElementById("air-quality").innerHTML = "⚠️ Lỗi khi tìm vị trí.";
+                console.error("Lỗi tìm kiếm vị trí:", error);
+            }
+        }
+
+        // Lấy dữ liệu chất lượng không khí
+        function fetchAirQuality(lat, lon) {
+            fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    const aqi = data.list[0].main.aqi;
+                    const components = data.list[0].components;
+                    const levels = ["Tốt", "Trung bình", "Không tốt", "Xấu", "Nguy hại"];
+                    const icons = ["✅", "🙂", "😐", "😷", "☠️"];
+                    const bgColors = ["#4ade80", "#fde68a", "#fdba74", "#fca5a5", "#c4b5fd"];
+
+                    const bgColor = bgColors[aqi - 1];
+                    const levelText = levels[aqi - 1];
+                    const icon = icons[aqi - 1];
+
+                    const html = `
+                        <div class="text-left" style="background: ${bgColor}; padding: 20px; color: #1f2937; border-radius: 8px;">
+                            <p class="text-2xl font-bold mb-3">${icon} Chỉ số AQI: ${aqi} - ${levelText}</p>
+                            <p><strong>CO (Cacbon monoxit):</strong> ${components.co} μg/m³</p>
+                            <p><strong>NO₂ (Nitơ dioxit):</strong> ${components.no2} μg/m³</p>
+                            <p><strong>Bụi mịn PM2.5:</strong> ${components.pm2_5} μg/m³</p>
+                            <p><strong>Bụi mịn PM10:</strong> ${components.pm10} μg/m³</p>
+                            <p><strong>O₃ (Ôzôn):</strong> ${components.o3} μg/m³</p>
+                        </div>
+                    `;
+
+                    document.getElementById("air-quality").innerHTML = html;
+                })
+                .catch(error => {
+                    document.getElementById("air-quality").innerHTML = "⚠️ Không thể tải dữ liệu chất lượng không khí.";
+                    console.error("Lỗi API không khí:", error);
+                });
+        }
+
+        // Mở modal
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) modal.classList.add("active");
+        }
+
+        // Đóng modal
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) modal.classList.remove("active");
+        }
+
+        // Chuyển đổi giữa các modal
+        function switchModal(targetId) {
+            closeModal("loginModal");
+            closeModal("registerModal");
+            openModal(targetId);
+        }
+
+        // Đăng ký
+        function register(event) {
+            event.preventDefault();
+            const email = document.getElementById("registerEmail").value.trim();
+            const password = document.getElementById("registerPassword").value;
+            if (!email || !password) {
+                alert("Vui lòng điền đầy đủ thông tin!");
+                return;
+            }
+            if (users[email]) {
+                alert("Email đã được đăng ký!");
+                return;
+            }
+            users[email] = simpleHash(password);
+            localStorage.setItem("users", JSON.stringify(users));
+            alert("Đăng ký thành công! Vui lòng đăng nhập.");
+            closeModal("registerModal");
+            openModal("loginModal");
+        }
+
+        // Đăng nhập
+        function login(event) {
+            event.preventDefault();
+            const email = document.getElementById("loginEmail").value.trim();
+            const password = document.getElementById("loginPassword").value;
+            if (!email || !password) {
+                alert("Vui lòng điền email và mật khẩu!");
+                return;
+            }
+            const hashedPassword = simpleHash(password);
+            if (users[email] !== hashedPassword) {
+                alert("Email hoặc mật khẩu không đúng!");
+                return;
+            }
+            localStorage.setItem("loggedInUser", email);
+            closeModal("loginModal");
+            checkLoginStatus();
+        }
+
+        // Đăng xuất
+        function logout() {
+            localStorage.removeItem("loggedInUser");
+            checkLoginStatus();
+        }
+
+        // Kiểm tra trạng thái đăng nhập
+        function checkLoginStatus() {
+            users = JSON.parse(localStorage.getItem("users")) || {};
+            const loggedInUser = localStorage.getItem("loggedInUser");
+            const loginLink = document.getElementById("loginLink");
+            const registerLink = document.getElementById("registerLink");
+            const userInfo = document.getElementById("userInfo");
+            const logoutLink = document.getElementById("logoutLink");
+
+            if (loggedInUser && users[loggedInUser]) {
+                loginLink.classList.add("hidden");
+                registerLink.classList.add("hidden");
+                userInfo.classList.remove("hidden");
+                logoutLink.classList.remove("hidden");
+                userInfo.textContent = `Xin chào, ${loggedInUser}`; // Hiển thị email
+            } else {
+                loginLink.classList.remove("hidden");
+                registerLink.classList.remove("hidden");
+                userInfo.classList.add("hidden");
+                logoutLink.classList.add("hidden");
+            }
+        }
+
+        // Hàm mã hóa đơn giản
+        function simpleHash(password) {
+            let hash = 0;
+            for (let i = 0; i < password.length; i++) {
+                hash = (hash << 5) - hash + password.charCodeAt(i);
+                hash |= 0;
+            }
+            return hash.toString();
+        }
+
+      
+
+        // Lấy và hiển thị dự báo thời tiết theo giờ
+        const weatherContainer = document.getElementById("hourly-weather");
+
+        function getWeatherIcon(code) {
+            if (code >= 1000 && code < 1100) return "☁️";
+            if (code >= 4000 && code < 5000) return "🌧";
+            if (code >= 5000 && code < 6000) return "❄️";
+            return "🌡";
+        }
+
+        function scrollWeather(direction) {
+            weatherContainer.scrollBy({ left: direction * 150, behavior: "smooth" });
+        }
+
+        fetch(`https://api.tomorrow.io/v4/timelines?location=21.03,105.85&fields=temperature,precipitationProbability,weatherCode&timesteps=1h&apikey=${weatherAPIKey}`)
+            .then(res => res.json())
+            .then(data => {
+                const intervals = data.data.timelines[0].intervals.slice(0, 24);
+                intervals.forEach(item => {
+                    const date = new Date(item.startTime);
+                    const hour = `${date.getHours()}h`;
+                    const temp = Math.round(item.values.temperature);
+                    const pop = Math.round(item.values.precipitationProbability);
+                    const icon = getWeatherIcon(item.values.weatherCode);
+
+                    const card = document.createElement("div");
+                    card.className = "min-w-[100px] bg-white bg-opacity-10 text-center rounded-xl px-4 py-5 backdrop-blur text-white flex-shrink-0 text-lg";
+                    card.innerHTML = `
+                        <div class="font-bold text-xl mb-1">${hour}</div>
+                        <div class="text-3xl mb-1">${icon}</div>
+                        <div class="text-lg">${temp}°C</div>
+                        <div class="text-sm">${pop}% 🌧</div>
+                    `;
+                    weatherContainer.appendChild(card);
+                });
+            })
+            .catch(err => console.error("Lỗi thời tiết theo giờ:", err));
+
+        // Khởi tạo trang
+        window.onload = () => {
+            checkLoginStatus();
+            fetchAirQuality(21.0285, 105.8542); // Mặc định tải Hà Nội
+        };
+    </script>
+</body>
+</html>

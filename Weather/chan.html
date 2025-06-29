@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Dự báo thời tiết theo giờ (24h cuộn)</title>
+  <style>
+    body {
+      background: #1e1e1e;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .slider-wrapper {
+      position: relative;
+    }
+
+    .arrow {
+      position: absolute;
+      top: 40%;
+      transform: translateY(-50%);
+      font-size: 30px;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      text-align: center;
+      line-height: 40px;
+      z-index: 10;
+    }
+
+    .arrow.left {
+      left: 0;
+    }
+
+    .arrow.right {
+      right: 0;
+    }
+
+    .weather-container {
+      display: flex;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      gap: 12px;
+      padding: 10px;
+    }
+
+    .hour-card {
+      background: #2a2a2a;
+      border-radius: 10px;
+      padding: 10px;
+      min-width: 90px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .icon {
+      font-size: 24px;
+    }
+
+    .time {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🌤 Dự báo thời tiết 24 giờ tới</h2>
+
+<div class="slider-wrapper">
+  <div class="arrow left" onclick="scrollWeather(-1)">❮</div>
+  <div class="weather-container" id="hourly-weather"></div>
+  <div class="arrow right" onclick="scrollWeather(1)">❯</div>
+</div>
+
+<script>
+  const lat = 21.03;
+  const lon = 105.85;
+  const apiKey = "xOPtnipmVta8ckcre2pGAbqEOEBLgOVq";
+  const url = `https://api.tomorrow.io/v4/timelines?location=${lat},${lon}&fields=temperature,precipitationProbability,weatherCode&timesteps=1h&apikey=${apiKey}`;
+
+  function getWeatherIcon(code) {
+    if (code >= 1000 && code < 1100) return "☁️";
+    if (code >= 4000 && code < 5000) return "🌧";
+    if (code >= 5000 && code < 6000) return "❄️";
+    return "🌡";
+  }
+
+  function scrollWeather(direction) {
+    const container = document.getElementById("hourly-weather");
+    const scrollAmount = 100;
+    container.scrollBy({
+      left: direction * scrollAmount,
+      behavior: 'smooth'
+    });
+  }
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      const intervals = data.data.timelines[0].intervals.slice(0, 24);
+      const container = document.getElementById("hourly-weather");
+
+      intervals.forEach(item => {
+        const date = new Date(item.startTime);
+        const hour = `${date.getHours()}h`;
+        const temp = Math.round(item.values.temperature);
+        const pop = Math.round(item.values.precipitationProbability);
+        const icon = getWeatherIcon(item.values.weatherCode);
+
+        const card = document.createElement("div");
+        card.className = "hour-card";
+        card.innerHTML = `
+          <div class="time">${hour}</div>
+          <div class="icon">${icon}</div>
+          <div>${temp}°C</div>
+          <div>${pop}% 🌧</div>
+        `;
+        container.appendChild(card);
+      });
+    })
+    .catch(err => {
+      console.error("Lỗi khi tải dữ liệu:", err);
+    });
+</script>
+
+</body>
+</html>

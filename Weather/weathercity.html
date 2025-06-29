@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dự Báo Thời Tiết</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: sans-serif;
+            background: linear-gradient(135deg, #6b7280, #1e3a8a);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        .weather-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            transition: transform 0.3s ease;
+        }
+        .weather-card:hover {
+            transform: scale(1.05);
+        }
+        .search-bar {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 9999px;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+        }
+        .search-bar input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: white;
+            width: 100%;
+            padding: 0.5rem;
+        }
+        .weather-icon {
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+        .forecast-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            transition: background 0.3s ease;
+        }
+        .forecast-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-card">
+        <h1 class="text-3xl font-bold text-center mb-6">Dự Báo Thời Tiết</h1>
+        
+        <!-- Search Bar -->
+        <div class="search-bar mb-6">
+            <input type="text" id="cityInput" placeholder="Nhập tên thành phố..." class="text-lg">
+            <button onclick="getWeather()" class="text-white ml-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Current Weather -->
+        <div id="currentWeather" class="text-center">
+            <h2 id="cityName" class="text-2xl font-semibold">Hà Nội</h2>
+            <img id="weatherIcon" src="https://openweathermap.org/img/wn/02d@2x.png" alt="Weather Icon" class="weather-icon mx-auto w-24 h-24">
+            <p id="temperature" class="text-4xl font-bold my-2">25°C</p>
+            <p id="description" class="text-lg capitalize">Trời quang mây</p>
+            <p id="humidity" class="text-sm">Độ ẩm: 60%</p>
+            <p id="wind" class="text-sm">Gió: 3.5 m/s</p>
+        </div>
+        
+        <!-- 5-Day Forecast -->
+        <div id="forecast" class="mt-6">
+            <h3 class="text-xl font-semibold mb-4">Dự báo 5 ngày</h3>
+            <div id="forecastList"></div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = "57d97ca9ff9d860bf41660ffe0c23aec"; // Thay bằng API key của bạn
+        const apiUrl = "https://api.openweathermap.org/data/2.5/";
+
+        async function getWeather() {
+            const city = document.getElementById("cityInput").value || "Hanoi";
+            try {
+                // Lấy dữ liệu thời tiết hiện tại
+                const currentWeatherResponse = await fetch(`${apiUrl}weather?q=${city}&appid=${apiKey}&units=metric&lang=vi`);
+                const currentWeatherData = await currentWeatherResponse.json();
+                
+                if (currentWeatherData.cod !== 200) {
+                    alert("Không tìm thấy thành phố!");
+                    return;
+                }
+
+                // Cập nhật thời tiết hiện tại
+                document.getElementById("cityName").textContent = currentWeatherData.name;
+                document.getElementById("temperature").textContent = `${Math.round(currentWeatherData.main.temp)}°C`;
+                document.getElementById("description").textContent = currentWeatherData.weather[0].description;
+                document.getElementById("humidity").textContent = `Độ ẩm: ${currentWeatherData.main.humidity}%`;
+                document.getElementById("wind").textContent = `Gió: ${currentWeatherData.wind.speed} m/s`;
+                document.getElementById("weatherIcon").src = `https://openweathermap.org/img/wn/${currentWeatherData.weather[0].icon}@2x.png`;
+
+                // Lấy dữ liệu dự báo 5 ngày
+                const forecastResponse = await fetch(`${apiUrl}forecast?q=${city}&appid=${apiKey}&units=metric&lang=vi`);
+                const forecastData = await forecastResponse.json();
+
+                // Lọc dữ liệu để lấy mỗi ngày (lấy dữ liệu lúc 12:00)
+                const dailyForecast = forecastData.list.filter(item => item.dt_txt.includes("12:00:00"));
+                const forecastList = document.getElementById("forecastList");
+                forecastList.innerHTML = "";
+
+                dailyForecast.forEach(day => {
+                    const date = new Date(day.dt * 1000).toLocaleDateString("vi-VN", { weekday: "short", day: "numeric", month: "short" });
+                    forecastList.innerHTML += `
+                        <div class="forecast-item flex items-center justify-between">
+                            <span>${date}</span>
+                            <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png" alt="Weather Icon" class="w-10 h-10">
+                            <span>${Math.round(day.main.temp)}°C</span>
+                            <span class="capitalize">${day.weather[0].description}</span>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                console.error("Lỗi khi lấy dữ liệu thời tiết:", error);
+                alert("Đã xảy ra lỗi. Vui lòng thử lại!");
+            }
+        }
+
+        // Gọi hàm để hiển thị thời tiết mặc định khi tải trang
+        window.onload = getWeather;
+    </script>
+</body>
+</html>

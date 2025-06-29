@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Bản đồ thời tiết</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+    select {
+      margin: 10px;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <select id="layerSelect">
+    <option value="wind_new">Gió (Wind)</option>
+    <option value="Radar">Radar</option>
+    <option value="clouds_new">Mây (Clouds)</option>
+    <option value="precipitation_new">Mưa (Precipitation)</option>
+    <option value="temp_new">Nhiệt độ (Temperature)</option>
+  </select>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    const apiKey = '57d97ca9ff9d860bf41660ffe0c23aec';
+    const map = L.map('map').setView([21.0285, 105.8542], 6); // Hà Nội
+
+    // OpenStreetMap nền
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Layer dự báo thời tiết
+    let weatherLayer;
+    function addWeatherLayer(type) {
+      if (weatherLayer) map.removeLayer(weatherLayer);
+      weatherLayer = L.tileLayer(`https://maps.openweathermap.org/maps/2.0/weather/${type}/{z}/{x}/{y}?appid=${apiKey}`, {
+        opacity: 0.5,
+        attribution: '&copy; <a href="https://openweathermap.org">OpenWeatherMap</a>'
+      }).addTo(map);
+    }
+
+    // Mặc định là gió
+    addWeatherLayer('wind_new');
+
+    // Thay đổi lớp dữ liệu thời tiết
+    document.getElementById('layerSelect').addEventListener('change', function () {
+      addWeatherLayer(this.value);
+    });
+
+    // Thêm popup khi click vào bản đồ
+    map.on('click', function(e) {
+      const lat = e.latlng.lat;
+      const lon = e.latlng.lng;
+
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=vi`;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          const weather = data.weather[0];
+          const main = data.main;
+          const wind = data.wind;
+
+          const popupText = `
+            <strong>Thời tiết tại đây:</strong><br>
+            Trạng thái: ${weather.description}<br>
+            Nhiệt độ: ${main.temp} °C<br>
+            Độ ẩm: ${main.humidity}%<br>
+            Áp suất: ${main.pressure} hPa<br>
+            Gió: ${wind.speed} m/s, hướng ${wind.deg}°
+          `;
+
+          L.popup()
+            .setLatLng([lat, lon])
+            .setContent(popupText)
+            .openOn(map);
+        })
+        .catch(err => console.error('Lỗi lấy dữ liệu:', err));
+    });
+  </script>
+</body>
+</html>
